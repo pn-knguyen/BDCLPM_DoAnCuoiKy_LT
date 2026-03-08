@@ -53,9 +53,9 @@ namespace DoAnCuoiKy
 
             if (!string.IsNullOrEmpty(expectedResult))
             {
-                string expected = expectedResult.ToLower().Trim();
-                string actual = actualResult.ToLower().Trim();
-                testPassed = actual.Contains(expected) || expected.Contains(actual);
+                string expected = NormalizeString(expectedResult);
+                string actual = NormalizeString(actualResult);
+                testPassed = actual.Contains(expected) || expected.Contains(actual) || actual.Equals(expected);
             }
 
             TestContext.Out.WriteLine($"Result: {(testPassed ? "PASS" : "FAIL")}");
@@ -67,6 +67,20 @@ namespace DoAnCuoiKy
                 SheetName);
 
             Assert.That(testPassed, Is.True);
+        }
+
+        private string NormalizeString(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return "";
+
+            return input
+                .Replace("\r\n", " ")
+                .Replace("\n", " ")
+                .Replace("\r", " ")
+                .Replace("\t", " ")
+                .ToLower()
+                .Trim()
+                .Replace("  ", " ");
         }
 
         private void ExecuteStep(TestStep step)
