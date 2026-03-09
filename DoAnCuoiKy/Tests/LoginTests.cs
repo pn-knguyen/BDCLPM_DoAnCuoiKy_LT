@@ -3,11 +3,13 @@ using NUnit.Framework;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
+using DoAnCuoiKy.Pages;
 
 namespace DoAnCuoiKy
 {
     public class LoginTests
     {
+        public LoginPage loginPage;
         public EdgeDriver driver;
         public WebDriverWait wait;
 
@@ -19,6 +21,7 @@ namespace DoAnCuoiKy
         {
             driver = new EdgeDriver();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+            loginPage = new LoginPage(driver, wait);
         }
 
         [TearDown]
@@ -90,27 +93,22 @@ namespace DoAnCuoiKy
 
             if (action.Contains("mở") || action.Contains("navigate"))
             {
-                driver.Navigate().GoToUrl(data);
+                loginPage.Navigate(data);
             }
 
             else if (action.Contains("username") || action.Contains("tên"))
             {
-                var username = WaitForElement(By.Id("Username"));
-                username.Clear();
-                username.SendKeys(data);
+                loginPage.EnterUsername(data);
             }
 
             else if (action.Contains("password") || action.Contains("mật"))
             {
-                var password = WaitForElement(By.Id("Password"));
-                password.Clear();
-                password.SendKeys(data);
+                loginPage.EnterPassword(data);
             }
 
             else if (action.Contains("click") || action.Contains("login") || action.Contains("đăng nhập"))
             {
-                var button = WaitForElement(By.CssSelector("button[type='submit']"));
-                button.Click();
+                loginPage.ClickLogin();
             }
         }
 
@@ -132,28 +130,11 @@ namespace DoAnCuoiKy
                 return $"Chuyển hướng đến trang admin: {currentUrl}";
             }
 
-            try
-            {
-                var error = wait.Until(d =>
-                {
-                    try
-                    {
-                        var el = d.FindElement(By.CssSelector(".font-medium"));
-                        return el.Displayed ? el : null;
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                });
+            string error = loginPage.GetErrorMessage();
 
-                if (error != null)
-                {
-                    return error.Text;
-                }
-            }
-            catch
+            if (!string.IsNullOrEmpty(error))
             {
+                return error;
             }
 
             return $"Still on login page: {currentUrl}";
