@@ -1,4 +1,5 @@
 ﻿using DoAnCuoiKy.Models;
+using DoAnCuoiKy.Pages;
 using NUnit.Framework;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Edge;
@@ -10,6 +11,7 @@ namespace DoAnCuoiKy.Tests.Product
     {
         public EdgeDriver driver;
         public WebDriverWait wait;
+        private CreatePage productPage;
 
         private const string SheetName = "Test Cases AD";
         private const string TestCaseFilter = "F3.1_";
@@ -19,6 +21,7 @@ namespace DoAnCuoiKy.Tests.Product
         {
             driver = new EdgeDriver();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+            productPage = new CreatePage(driver, wait);
         }
 
         [TearDown]
@@ -55,7 +58,6 @@ namespace DoAnCuoiKy.Tests.Product
             {
                 string expected = NormalizeString(expectedResult);
                 string actual = NormalizeString(actualResult);
-
                 testPassed = actual.Contains(expected) || expected.Contains(actual) || actual.Equals(expected);
             }
 
@@ -81,7 +83,7 @@ namespace DoAnCuoiKy.Tests.Product
                 .Replace("\t", " ")
                 .ToLower()
                 .Trim()
-                .Replace("  ", " "); // Remove double spaces
+                .Replace("  ", " ");
         }
 
         private void ExecuteStep(TestStep step)
@@ -89,250 +91,75 @@ namespace DoAnCuoiKy.Tests.Product
             string action = step.StepAction?.ToLower() ?? "";
             string data = step.TestData ?? "";
 
-            // Bước 1: Mở trang đăng nhập
             if (action.Contains("mở trang") || action.Contains("open"))
-            {
-                driver.Navigate().GoToUrl(data);
-                Thread.Sleep(1000);
-            }
+                productPage.Navigate(data);
 
-            // Bước 2: Nhập tên đăng nhập
             else if (action.Contains("tên đăng nhập") || action.Contains("username"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var username = WaitForElement(By.Id("Username"));
-                    username.Clear();
-                    username.SendKeys(data);
-                }
-            }
+                productPage.EnterUsername(data);
 
-            // Bước 3: Nhập mật khẩu
             else if (action.Contains("mật khẩu") || action.Contains("password"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var password = WaitForElement(By.Id("Password"));
-                    password.Clear();
-                    password.SendKeys(data);
-                }
-            }
+                productPage.EnterPassword(data);
 
-            // Bước 4: Click nút đăng nhập
             else if (action.Contains("đăng nhập") || action.Contains("login"))
-            {
-                var loginBtn = WaitForElement(By.CssSelector("button[type='submit']"));
-                loginBtn.Click();
-                Thread.Sleep(1500);
-            }
+                productPage.ClickLogin();
 
-            // Bước 5: Chọn quản lý sản phẩm
             else if (action.Contains("quản lý sản phẩm"))
-            {
-                var productMenu = WaitForElement(By.LinkText("Quản lý sản phẩm"));
-                productMenu.Click();
-                Thread.Sleep(800);
-            }
+                productPage.OpenProductManagement();
 
-            // Bước 6: Click nút thêm sản phẩm mới
             else if (action.Contains("thêm sản phẩm mới"))
-            {
-                var createBtn = WaitForElement(By.LinkText("Thêm sản phẩm mới"));
-                createBtn.Click();
-                Thread.Sleep(800);
-            }
+                productPage.ClickCreateProduct();
 
-            // Bước 7: Nhập tên sản phẩm
-            else if (action.Contains("tên sản phẩm") || action.Contains("product name"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var productName = WaitForElement(By.Id("ProductName"));
-                    productName.Clear();
-                    productName.SendKeys(data);
-                }
-            }
+            else if (action.Contains("tên sản phẩm"))
+                productPage.EnterProductName(data);
 
-            // Bước 8: Chọn danh mục
-            else if (action.Contains("danh mục") || action.Contains("category"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var category = new SelectElement(WaitForElement(By.Id("CategoryId")));
-                    category.SelectByText(data);
-                }
-            }
+            else if (action.Contains("danh mục"))
+                productPage.SelectCategory(data);
 
-            // Bước 9: Nhập giá
-            else if ((action.Contains("nhập giá") || action.Contains("price")) && !action.Contains("giảm"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var price = WaitForElement(By.Id("Price"));
-                    price.Clear();
-                    price.SendKeys(data);
-                    Thread.Sleep(300);
-                }
-            }
+            else if (action.Contains("nhập giá") && !action.Contains("giảm"))
+                productPage.EnterPrice(data);
 
-            // Bước 10: Nhập số lượng tồn kho
-            else if (action.Contains("số lượng") || action.Contains("tồn kho") || action.Contains("stock"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var stock = WaitForElement(By.Id("Stock"));
-                    stock.Clear();
-                    stock.SendKeys(data);
-                }
-            }
+            else if (action.Contains("số lượng") || action.Contains("tồn kho"))
+                productPage.EnterStock(data);
 
-            // Bước 11: Chọn chương trình giảm giá / khuyến mãi (Discount)
-            else if (action.Contains("giảm giá") || action.Contains("khuyến mãi") || action.Contains("discount"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var discount = new SelectElement(WaitForElement(By.Id("DiscountId")));
-                    discount.SelectByText(data);
-                }
-            }
+            else if (action.Contains("giảm giá") || action.Contains("discount"))
+                productPage.SelectDiscount(data);
 
-            // Bước 12: Nhập mô tả ngắn
-            else if (action.Contains("mô tả ngắn") || action.Contains("short description"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var shortDesc = WaitForElement(By.Id("ShortDescription"));
-                    shortDesc.Clear();
-                    shortDesc.SendKeys(data);
-                }
-            }
+            else if (action.Contains("mô tả ngắn"))
+                productPage.EnterShortDescription(data);
 
-            // Bước 13: Nhập mô tả chi tiết
-            else if (action.Contains("mô tả chi tiết") || action.Contains("detail description") || action.Contains("mô tả"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var detailDesc = WaitForElement(By.Id("DetailDescription"));
-                    detailDesc.Clear();
-                    detailDesc.SendKeys(data);
-                }
-            }
+            else if (action.Contains("mô tả chi tiết") || action.Contains("mô tả"))
+                productPage.EnterDetailDescription(data);
 
-            // Bước 14: Chọn màu sắc
-            else if (action.Contains("màu") || action.Contains("color"))
-            {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    var color = new SelectElement(WaitForElement(By.Name("Colors")));
-                    color.SelectByText(data);
-                    Thread.Sleep(300);
-                }
-            }
+            else if (action.Contains("màu"))
+                productPage.SelectColor(data);
 
-            // Bước 15: Upload/Chọn hình ảnh
-            else if (action.Contains("upload") || action.Contains("hình ảnh") || action.Contains("chọn hình"))
-            {
-                if (!string.IsNullOrWhiteSpace(data) && File.Exists(data))
-                {
-                    var image = WaitForElement(By.Name("Images"));
-                    image.SendKeys(data);
-                    Thread.Sleep(500);
-                }
-            }
+            else if (action.Contains("upload") || action.Contains("hình"))
+                productPage.UploadImage(data);
 
-            // Bước 16: Click lưu / Submit
-            else if (action.Contains("click lưu") || action.Contains("submit") || action.Contains("lưu"))
-            {
-                var submitBtn = WaitForElement(By.Id("submitButton"));
-                submitBtn.Click();
-                Thread.Sleep(1500);
-            }
-        }
-
-        private IWebElement WaitForElement(By locator)
-        {
-            return wait.Until(driver =>
-            {
-                var element = driver.FindElement(locator);
-                return element.Displayed ? element : null;
-            });
+            else if (action.Contains("lưu") || action.Contains("submit"))
+                productPage.Submit();
         }
 
         private string GetActualResult()
         {
             string currentUrl = driver.Url;
 
-            // Kiểm tra thông báo thành công (theo expected result: "Thêm sản phẩm thành công")
-            try
-            {
-                var successMessage = wait.Until(d =>
-                {
-                    try
-                    {
-                        var el = d.FindElement(By.CssSelector(".sm\\:inline"));
-                        return el.Displayed ? el : null;
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                });
+            string success = productPage.GetSuccessMessage();
+            if (!string.IsNullOrEmpty(success))
+                return success;
 
-                if (successMessage != null && !string.IsNullOrWhiteSpace(successMessage.Text))
-                {
-                    return successMessage.Text;
-                }
-            }
-            catch
-            {
-            }
+            string validation = productPage.GetValidationErrors();
+            if (!string.IsNullOrEmpty(validation))
+                return $"Lỗi validation: {validation}";
 
-            // Kiểm tra validation errors
-            try
-            {
-                var validationErrors = driver.FindElements(By.CssSelector(".text-red-500, .validation-error, .text-danger, span.field-validation-error, .bg-red-100.border.border-red-400.text-red-700.px-4.py-3.rounded.relative.mb-4"));
-                if (validationErrors.Count > 0)
-                {
-                    var errors = string.Join(", ", validationErrors.Select(e => e.Text).Where(t => !string.IsNullOrWhiteSpace(t)));
-                    if (!string.IsNullOrEmpty(errors))
-                    {
-                        return $"Lỗi validation: {errors}";
-                    }
-                }
-            }
-            catch
-            {
-            }
-
-            // Kiểm tra redirect về Product/Index (thành công)
             if (currentUrl.Contains("/Product/Index"))
-            {
                 return "Sản phẩm được tạo thành công, quay về trang danh sách";
-            }
 
-            // Kiểm tra vẫn ở trang Create (có lỗi)
             if (currentUrl.Contains("/Product/Create"))
-            {
                 return "Vẫn ở trang tạo sản phẩm (có thể có lỗi)";
-            }
 
             return $"Trang hiện tại: {currentUrl}";
         }
-
-        private IWebElement? FindElement(params By[] locators)
-        {
-            foreach (var locator in locators)
-            {
-                try
-                {
-                    var element = driver.FindElement(locator);
-                    if (element.Displayed)
-                        return element;
-                }
-                catch { }
-            }
-
-            return null;
-        }
     }
 }
+
