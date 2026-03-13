@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DoAnCuoiKy.Tests.Category
+namespace DoAnCuoiKy.Pages.Category
 {
-    internal class UpdateCategoryTests
+    internal class Create
     {
     }
 }

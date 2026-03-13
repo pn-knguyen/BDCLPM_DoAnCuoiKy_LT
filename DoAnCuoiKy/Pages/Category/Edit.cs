@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DoAnCuoiKy.Tests.Product
+namespace DoAnCuoiKy.Pages.Category
 {
-    internal class DeleteProductTests
+    internal class Edit
     {
     }
 }

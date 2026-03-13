@@ -6,7 +6,7 @@ namespace DoAnCuoiKy
 {
     public class ExcelDataProvider
     {
-        private const string ExcelFilePath = @"C:\Users\phamn\BaoDamChatLuongPM\LyThuyet\B12 - Functional Test case.xlsx";
+        private const string ExcelFilePath = @"C:\Users\phamn\OneDrive\Hoc ky 7\Bao dam chat luong phan mem\DoAn\2117_Functional_Testcase.xlsx";
 
         static ExcelDataProvider()
         {

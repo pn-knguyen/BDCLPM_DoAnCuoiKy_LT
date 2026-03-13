@@ -4,7 +4,7 @@ using System.Text;
 
 namespace DoAnCuoiKy.Tests.Category
 {
-    internal class DeleteCategoryTests
+    internal class EditCategoryTests
     {
     }
 }

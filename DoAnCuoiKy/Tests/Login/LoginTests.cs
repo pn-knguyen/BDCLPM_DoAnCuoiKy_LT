@@ -3,7 +3,7 @@ using NUnit.Framework;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
-using DoAnCuoiKy.Pages;
+using DoAnCuoiKy.Pages.Login;
 
 namespace DoAnCuoiKy
 {

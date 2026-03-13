@@ -131,27 +131,32 @@ namespace DoAnCuoiKy.Pages
             }
         }
 
-        public void SelectColor(string data)
+        public void SelectColor(string data, int index)
         {
             if (!string.IsNullOrWhiteSpace(data))
             {
-                var color = new SelectElement(Wait(By.Name("Colors")));
-                color.SelectByText(data);
+                var colors = wait.Until(d => d.FindElements(By.Name("Colors")));
+                var colorDropdown = new SelectElement(colors[index]);
+                colorDropdown.SelectByText(data);
             }
         }
 
-        public void UploadImage(string path)
+        public void UploadImage(string path, int index)
         {
             if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
             {
-                var image = Wait(By.Name("Images"));
-                image.SendKeys(path);
+                var images = wait.Until(d => d.FindElements(By.Name("Images")));
+                images[index].SendKeys(path);
             }
         }
 
         public void Submit()
         {
             Wait(By.Id("submitButton")).Click();
+        }
+        public void AddColor()
+        {
+            Wait(By.CssSelector(".mt-4")).Click();
         }
 
         public string GetSuccessMessage()

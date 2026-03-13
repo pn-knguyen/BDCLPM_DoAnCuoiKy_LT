@@ -16,6 +16,9 @@ namespace DoAnCuoiKy.Tests.Product
         private const string SheetName = "Test Cases AD";
         private const string TestCaseFilter = "F3.1_";
 
+        private int colorIndex = 0; 
+        private bool colorSelected = false;
+
         [SetUp]
         public void Setup()
         {
@@ -40,11 +43,16 @@ namespace DoAnCuoiKy.Tests.Product
 
             ExcelDataProvider.ClearOldResults(steps, SheetName);
 
-            foreach (var step in steps)
+            for (int i = 0; i < steps.Count; i++)
             {
+                var step = steps[i];
+                TestStep? nextStep = i < steps.Count - 1 ? steps[i + 1] : null;
+
                 TestContext.Out.WriteLine($"Step {step.StepNumber} - {step.StepAction} - {step.TestData}");
-                ExecuteStep(step);
+
+                ExecuteStep(step, nextStep);
             }
+
 
             string actualResult = GetActualResult();
 
@@ -86,7 +94,7 @@ namespace DoAnCuoiKy.Tests.Product
                 .Replace("  ", " ");
         }
 
-        private void ExecuteStep(TestStep step)
+        private void ExecuteStep(TestStep step, TestStep? nextStep)
         {
             string action = step.StepAction?.ToLower() ?? "";
             string data = step.TestData ?? "";
@@ -115,13 +123,13 @@ namespace DoAnCuoiKy.Tests.Product
             else if (action.Contains("danh mục"))
                 productPage.SelectCategory(data);
 
-            else if (action.Contains("nhập giá") && !action.Contains("giảm"))
+            else if (action.Contains("nhập giá"))
                 productPage.EnterPrice(data);
 
-            else if (action.Contains("số lượng") || action.Contains("tồn kho"))
+            else if (action.Contains("số lượng"))
                 productPage.EnterStock(data);
 
-            else if (action.Contains("giảm giá") || action.Contains("discount"))
+            else if (action.Contains("giảm giá"))
                 productPage.SelectDiscount(data);
 
             else if (action.Contains("mô tả ngắn"))
@@ -130,15 +138,29 @@ namespace DoAnCuoiKy.Tests.Product
             else if (action.Contains("mô tả chi tiết") || action.Contains("mô tả"))
                 productPage.EnterDetailDescription(data);
 
-            else if (action.Contains("màu"))
-                productPage.SelectColor(data);
+            else if (action.Contains("chọn màu"))
+                productPage.SelectColor(data, colorIndex);
 
-            else if (action.Contains("upload") || action.Contains("hình"))
-                productPage.UploadImage(data);
+            else if (action.Contains("chọn hình") || action.Contains("upload"))
+            {
+                productPage.UploadImage(data, colorIndex);
 
-            else if (action.Contains("lưu") || action.Contains("submit"))
+                // chỉ thêm màu nếu bước tiếp theo KHÔNG phải submit
+                if (nextStep != null &&
+                    !nextStep.StepAction.ToLower().Contains("thêm sản phẩm") &&
+                    !nextStep.StepAction.ToLower().Contains("lưu"))
+                {
+                    productPage.AddColor();
+                    colorIndex++;
+                }
+            }
+
+            else if (action.Contains("thêm sản phẩm") || action.Contains("lưu"))
                 productPage.Submit();
         }
+
+
+
 
         private string GetActualResult()
         {
