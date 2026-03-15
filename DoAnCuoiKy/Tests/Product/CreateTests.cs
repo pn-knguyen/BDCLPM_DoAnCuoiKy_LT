@@ -1,4 +1,4 @@
-﻿using DoAnCuoiKy.Models;
+using DoAnCuoiKy.Models;
 using DoAnCuoiKy.Pages;
 using NUnit.Framework;
 using OpenQA.Selenium;
@@ -7,23 +7,24 @@ using OpenQA.Selenium.Support.UI;
 
 namespace DoAnCuoiKy.Tests.Product
 {
-    public class CreateProductTests
+    public class CreateTests
     {
         public EdgeDriver driver;
         public WebDriverWait wait;
-        private CreatePage productPage;
+        private Create productPage;
 
         private const string SheetName = "Test Cases AD";
         private const string TestCaseFilter = "F3.1_";
 
-        private int colorIndex = 0;
+        private int colorIndex = 0; 
+        private bool colorSelected = false;
 
         [SetUp]
         public void Setup()
         {
             driver = new EdgeDriver();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-            productPage = new CreatePage(driver, wait);
+            productPage = new Create(driver, wait);
         }
 
         [TearDown]
@@ -36,11 +37,6 @@ namespace DoAnCuoiKy.Tests.Product
         [Test, TestCaseSource(typeof(ExcelDataProvider), nameof(ExcelDataProvider.GetTestCases), new object[] { "Test Cases AD", "F3.1_" })]
         public void CreateProductTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
         {
-            if (tcId == ExcelDataProvider.PlaceholderTestCaseId || steps.Count == 0)
-            {
-                Assert.Ignore("Test data is missing. Set BDCLPM_EXCEL_PATH or provide matching test cases in the Excel sheet.");
-            }
-
             TestContext.Out.WriteLine($"Test Case ID: {tcId}");
             TestContext.Out.WriteLine($"Objective: {objective}");
             TestContext.Out.WriteLine();
@@ -147,11 +143,15 @@ namespace DoAnCuoiKy.Tests.Product
 
             else if (action.Contains("chọn hình") || action.Contains("upload"))
             {
-                productPage.UploadImage(data, colorIndex);
+                var imagePaths = data.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var path in imagePaths)
+                {
+                    productPage.UploadImage(path.Trim(), colorIndex);
+                }
 
                 // chỉ thêm màu nếu bước tiếp theo KHÔNG phải submit
                 if (nextStep != null &&
-                    !string.IsNullOrWhiteSpace(nextStep.StepAction) &&
                     !nextStep.StepAction.ToLower().Contains("thêm sản phẩm") &&
                     !nextStep.StepAction.ToLower().Contains("lưu"))
                 {
