@@ -4,6 +4,7 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
 using System.Net.Http;
+using DoAnCuoiKy.Pages.Login;
 
 namespace DoAnCuoiKy.Tests.Category
 {
