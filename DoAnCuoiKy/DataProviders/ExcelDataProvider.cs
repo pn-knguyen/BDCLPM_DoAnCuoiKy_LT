@@ -6,11 +6,45 @@ namespace DoAnCuoiKy
 {
     public class ExcelDataProvider
     {
-        private const string ExcelFilePath = @"C:\Users\phamn\OneDrive\Hoc ky 7\Bao dam chat luong phan mem\DoAn\2117_Functional_Testcase.xlsx";
+        private const string ExcelFileEnvVar = "BDCLPM_EXCEL_PATH";
+        private const string DefaultExcelFileName = "2117_Functional_Testcase.xlsx";
+        public const string PlaceholderTestCaseId = "__MISSING_OR_EMPTY_TEST_DATA__";
+
+        private static string ExcelFilePath => ResolveExcelFilePath();
 
         static ExcelDataProvider()
         {
             ExcelPackage.License.SetNonCommercialPersonal("DoAnCuoiKy");
+        }
+
+        private static string ResolveExcelFilePath()
+        {
+            var envPath = Environment.GetEnvironmentVariable(ExcelFileEnvVar);
+            if (!string.IsNullOrWhiteSpace(envPath))
+            {
+                return envPath;
+            }
+
+            // Walk up from the test bin folder to project/repo roots and try common locations.
+            var current = AppContext.BaseDirectory;
+            for (int i = 0; i < 6 && !string.IsNullOrWhiteSpace(current); i++)
+            {
+                var candidateInCurrent = Path.Combine(current, DefaultExcelFileName);
+                if (File.Exists(candidateInCurrent))
+                {
+                    return candidateInCurrent;
+                }
+
+                var candidateInTestData = Path.Combine(current, "TestData", DefaultExcelFileName);
+                if (File.Exists(candidateInTestData))
+                {
+                    return candidateInTestData;
+                }
+
+                current = Directory.GetParent(current)?.FullName ?? string.Empty;
+            }
+
+            return Path.Combine(AppContext.BaseDirectory, DefaultExcelFileName);
         }
 
         public static IEnumerable<TestCaseData> GetTestCases(string sheetName, string testCaseFilter)
@@ -20,6 +54,13 @@ namespace DoAnCuoiKy
             if (!File.Exists(ExcelFilePath))
             {
                 TestContext.Out.WriteLine($"ERROR: Excel file not found: {ExcelFilePath}");
+                TestContext.Out.WriteLine($"TIP: Set environment variable {ExcelFileEnvVar} to your Excel test file path.");
+                testCases.Add(new TestCaseData(
+                    PlaceholderTestCaseId,
+                    "Missing Excel data file",
+                    new List<TestStep>(),
+                    $"Provide Excel file via {ExcelFileEnvVar}",
+                    0));
                 return testCases;
             }
 
@@ -68,6 +109,16 @@ namespace DoAnCuoiKy
             }
 
             AddTestCase(testCases, currentTcId, objective, expected, steps, startRow, testCaseFilter);
+
+            if (testCases.Count == 0)
+            {
+                testCases.Add(new TestCaseData(
+                    PlaceholderTestCaseId,
+                    $"No test cases found for filter {testCaseFilter}",
+                    new List<TestStep>(),
+                    "Check sheet name/filter in test source",
+                    0));
+            }
 
             TestContext.Out.WriteLine($"Loaded {testCases.Count} test cases");
 

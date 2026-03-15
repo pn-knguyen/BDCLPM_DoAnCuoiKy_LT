@@ -16,8 +16,7 @@ namespace DoAnCuoiKy.Tests.Product
         private const string SheetName = "Test Cases AD";
         private const string TestCaseFilter = "F3.1_";
 
-        private int colorIndex = 0; 
-        private bool colorSelected = false;
+        private int colorIndex = 0;
 
         [SetUp]
         public void Setup()
@@ -37,6 +36,11 @@ namespace DoAnCuoiKy.Tests.Product
         [Test, TestCaseSource(typeof(ExcelDataProvider), nameof(ExcelDataProvider.GetTestCases), new object[] { "Test Cases AD", "F3.1_" })]
         public void CreateProductTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
         {
+            if (tcId == ExcelDataProvider.PlaceholderTestCaseId || steps.Count == 0)
+            {
+                Assert.Ignore("Test data is missing. Set BDCLPM_EXCEL_PATH or provide matching test cases in the Excel sheet.");
+            }
+
             TestContext.Out.WriteLine($"Test Case ID: {tcId}");
             TestContext.Out.WriteLine($"Objective: {objective}");
             TestContext.Out.WriteLine();
@@ -147,6 +151,7 @@ namespace DoAnCuoiKy.Tests.Product
 
                 // chỉ thêm màu nếu bước tiếp theo KHÔNG phải submit
                 if (nextStep != null &&
+                    !string.IsNullOrWhiteSpace(nextStep.StepAction) &&
                     !nextStep.StepAction.ToLower().Contains("thêm sản phẩm") &&
                     !nextStep.StepAction.ToLower().Contains("lưu"))
                 {

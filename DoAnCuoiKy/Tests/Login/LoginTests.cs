@@ -3,7 +3,7 @@ using NUnit.Framework;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
-using DoAnCuoiKy.Pages.Login;
+using DoAnCuoiKy.Pages;
 
 namespace DoAnCuoiKy
 {
@@ -34,6 +34,11 @@ namespace DoAnCuoiKy
         [Test, TestCaseSource(typeof(ExcelDataProvider), nameof(ExcelDataProvider.GetTestCases), new object[] { "Test Cases AD", "F1_" })]
         public void LoginTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
         {
+            if (tcId == ExcelDataProvider.PlaceholderTestCaseId || steps.Count == 0)
+            {
+                Assert.Ignore("Test data is missing. Set BDCLPM_EXCEL_PATH or provide matching test cases in the Excel sheet.");
+            }
+
             TestContext.Out.WriteLine($"Test Case ID: {tcId}");
             TestContext.Out.WriteLine($"Objective: {objective}");
             TestContext.Out.WriteLine();
