@@ -5,7 +5,7 @@ using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
 using DoAnCuoiKy.Pages.Login;
 
-namespace DoAnCuoiKy
+namespace DoAnCuoiKy.Tests.Login
 {
     public class LoginTests
     {

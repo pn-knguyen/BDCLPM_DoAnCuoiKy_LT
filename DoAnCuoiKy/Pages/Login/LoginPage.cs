@@ -1,7 +1,7 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
 
-namespace DoAnCuoiKy.Pages
+namespace DoAnCuoiKy.Pages.Login
 {
     public class LoginPage
     {

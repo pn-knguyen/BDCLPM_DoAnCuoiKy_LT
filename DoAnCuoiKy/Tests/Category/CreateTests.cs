@@ -4,7 +4,7 @@ using System.Text;
 
 namespace DoAnCuoiKy.Tests.Category
 {
-    internal class CreateCategoryTests
+    internal class CreateTests
     {
     }
 }

@@ -7,11 +7,11 @@ using OpenQA.Selenium.Support.UI;
 
 namespace DoAnCuoiKy.Tests.Product
 {
-    public class CreateProductTests
+    public class CreateTests
     {
         public EdgeDriver driver;
         public WebDriverWait wait;
-        private CreatePage productPage;
+        private Create productPage;
 
         private const string SheetName = "Test Cases AD";
         private const string TestCaseFilter = "F3.1_";
@@ -24,7 +24,7 @@ namespace DoAnCuoiKy.Tests.Product
         {
             driver = new EdgeDriver();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-            productPage = new CreatePage(driver, wait);
+            productPage = new Create(driver, wait);
         }
 
         [TearDown]
@@ -143,7 +143,12 @@ namespace DoAnCuoiKy.Tests.Product
 
             else if (action.Contains("chọn hình") || action.Contains("upload"))
             {
-                productPage.UploadImage(data, colorIndex);
+                var imagePaths = data.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var path in imagePaths)
+                {
+                    productPage.UploadImage(path.Trim(), colorIndex);
+                }
 
                 // chỉ thêm màu nếu bước tiếp theo KHÔNG phải submit
                 if (nextStep != null &&

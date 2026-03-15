@@ -1,10 +1,172 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using DoAnCuoiKy.Models;
+using DoAnCuoiKy.Pages;
+using NUnit.Framework;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Edge;
+using OpenQA.Selenium.Support.UI;
 
 namespace DoAnCuoiKy.Tests.Product
 {
-    internal class UpdateProductTests
+    public class EditTests
     {
+        public EdgeDriver driver;
+        public WebDriverWait wait;
+        private Edit productPage;
+
+        private const string SheetName = "Test Cases AD";
+        private const string TestCaseFilter = "F3.4_";
+
+        private int colorIndex = 0;
+
+        [SetUp]
+        public void Setup()
+        {
+            driver = new EdgeDriver();
+            wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+            productPage = new Edit(driver, wait);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            driver?.Quit();
+            driver?.Dispose();
+        }
+
+        [Test, TestCaseSource(typeof(ExcelDataProvider), nameof(ExcelDataProvider.GetTestCases), new object[] { "Test Cases AD", "F3.4_" })]
+        public void EditProductTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
+        {
+            TestContext.Out.WriteLine($"Test Case ID: {tcId}");
+            TestContext.Out.WriteLine($"Objective: {objective}");
+            TestContext.Out.WriteLine();
+
+            ExcelDataProvider.ClearOldResults(steps, SheetName);
+
+            for (int i = 0; i < steps.Count; i++)
+            {
+                var step = steps[i];
+                TestContext.Out.WriteLine($"Step {step.StepNumber} - {step.StepAction} - {step.TestData}");
+
+                ExecuteStep(step);
+            }
+
+            string actualResult = GetActualResult();
+
+            TestContext.Out.WriteLine();
+            TestContext.Out.WriteLine($"Expected: {expectedResult}");
+            TestContext.Out.WriteLine($"Actual: {actualResult}");
+
+            bool testPassed = false;
+
+            if (!string.IsNullOrEmpty(expectedResult))
+            {
+                string expected = NormalizeString(expectedResult);
+                string actual = NormalizeString(actualResult);
+
+                testPassed = actual.Contains(expected) || expected.Contains(actual) || actual.Equals(expected);
+            }
+
+            TestContext.Out.WriteLine($"Result: {(testPassed ? "PASS" : "FAIL")}");
+
+            ExcelDataProvider.WriteTestResults(
+                steps,
+                actualResult,
+                testPassed ? "Pass" : "Fail",
+                SheetName);
+
+            Assert.That(testPassed, Is.True);
+        }
+
+        private string NormalizeString(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return "";
+
+            return input
+                .Replace("\r\n", " ")
+                .Replace("\n", " ")
+                .Replace("\r", " ")
+                .Replace("\t", " ")
+                .ToLower()
+                .Trim()
+                .Replace("  ", " ");
+        }
+
+        private void ExecuteStep(TestStep step)
+        {
+            string action = step.StepAction?.ToLower() ?? "";
+            string data = step.TestData ?? "";
+
+            if (action.Contains("mở trang"))
+                productPage.Navigate(data);
+
+            else if (action.Contains("tên đăng nhập"))
+                productPage.EnterUsername(data);
+
+            else if (action.Contains("mật khẩu"))
+                productPage.EnterPassword(data);
+
+            else if (action.Contains("đăng nhập"))
+                productPage.ClickLogin();
+
+            else if (action.Contains("quản lý sản phẩm"))
+                productPage.OpenProductManagement();
+
+            else if (action.Contains("click nút sửa"))
+                productPage.ClickEditProduct();
+
+            else if (action.Contains("tên sản phẩm"))
+                productPage.EnterProductName(data);
+
+            else if (action.Contains("danh mục"))
+                productPage.SelectCategory(data);
+
+            else if (action.Contains("giá"))
+                productPage.EnterPrice(data);
+
+            else if (action.Contains("số lượng"))
+                productPage.EnterStock(data);
+
+            else if (action.Contains("giảm giá"))
+                productPage.SelectDiscount(data);
+
+            else if (action.Contains("mô tả ngắn"))
+                productPage.EnterShortDescription(data);
+
+            else if (action.Contains("mô tả chi tiết"))
+                productPage.EnterDetailDescription(data);
+
+            else if (action.Contains("chọn màu"))
+                productPage.SelectColor(data, colorIndex);
+
+            else if (action.Contains("chọn hình"))
+                productPage.UploadNewImage(data);
+
+            else if (action.Contains("lưu"))
+                productPage.SubmitEdit();
+        }
+
+        private string GetActualResult()
+        {
+            string currentUrl = driver.Url;
+
+            // lấy thông báo thành công
+            string success = productPage.GetSuccessMessage();
+            if (!string.IsNullOrEmpty(success))
+                return success;
+
+            // lấy lỗi validation
+            string validation = productPage.GetValidationErrors();
+            if (!string.IsNullOrEmpty(validation))
+                return $"Lỗi validation: {validation}";
+
+            // fallback theo url
+            if (currentUrl.Contains("/Product/Index"))
+                return "Cập nhật sản phẩm thành công";
+
+            if (currentUrl.Contains("/Product/Edit"))
+                return "Vẫn ở trang chỉnh sửa sản phẩm (có thể có lỗi)";
+
+            return $"Trang hiện tại: {currentUrl}";
+        }
     }
 }

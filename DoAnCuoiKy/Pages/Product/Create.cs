@@ -3,12 +3,12 @@ using OpenQA.Selenium.Support.UI;
 
 namespace DoAnCuoiKy.Pages
 {
-    public class CreatePage
+    public class Create
     {
         private IWebDriver driver;
         private WebDriverWait wait;
 
-        public CreatePage(IWebDriver driver, WebDriverWait wait)
+        public Create(IWebDriver driver, WebDriverWait wait)
         {
             this.driver = driver;
             this.wait = wait;
@@ -16,11 +16,7 @@ namespace DoAnCuoiKy.Pages
 
         private IWebElement Wait(By locator)
         {
-            return wait.Until(d =>
-            {
-                var el = d.FindElement(locator);
-                return el.Displayed ? el : null;
-            });
+            return wait.Until(d => d.FindElement(locator));
         }
 
         public void Navigate(string url)
