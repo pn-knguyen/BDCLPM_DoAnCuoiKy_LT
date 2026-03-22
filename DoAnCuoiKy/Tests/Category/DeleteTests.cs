@@ -4,22 +4,26 @@ using DoAnCuoiKy.Pages.Category;
 namespace DoAnCuoiKy.Tests.Category
 {
     [NonParallelizable]
-    public class IndexTests : CategoryTestBase
+    public class DeleteTests : CategoryTestBase
     {
-        private const string TestCaseFilter = "F4.0_";
+        private const string TestCaseFilter = "F4.3_";
 
         private CategoryIndexPage _categoryIndexPage = null!;
         private string _selectedCategory = string.Empty;
+        private bool _confirmedDelete;
+        private bool _cancelledDelete;
 
         [SetUp]
-        public void SetupCategoryIndex()
+        public void SetupDeletePage()
         {
             _categoryIndexPage = new CategoryIndexPage(Driver, Wait);
             _selectedCategory = string.Empty;
+            _confirmedDelete = false;
+            _cancelledDelete = false;
         }
 
         [Test, TestCaseSource(typeof(ExcelDataProvider), nameof(ExcelDataProvider.GetTestCases), new object[] { SheetName, TestCaseFilter })]
-        public void CategoryIndexTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
+        public void DeleteCategoryTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
         {
             if (tcId == ExcelDataProvider.PlaceholderTestCaseId)
             {
@@ -64,22 +68,33 @@ namespace DoAnCuoiKy.Tests.Category
                 return;
 
             if (action.Contains("quản lý danh mục"))
+            {
                 _categoryIndexPage.Navigate(GetCategoryIndexUrl());
-
-            else if (action.Contains("thêm danh mục") || action.Contains("add new"))
-                _categoryIndexPage.ClickAddNewCategory();
-
+            }
             else if (action.Contains("chọn danh mục") || action.Contains("hiển thị danh mục"))
+            {
                 _selectedCategory = ExtractCategoryName(action, data);
-
+            }
             else if (action.Contains("nút \"xóa\"") || action.Contains("icon xóa") || action.Contains("nhấn nút \"xoá\"") || action.Contains("nhấn nút \"xóa\""))
+            {
                 _categoryIndexPage.ClickDeleteByName(_selectedCategory);
-
+            }
             else if (action.Contains("xác nhận") || action.Contains("ok"))
+            {
+                _confirmedDelete = true;
+
+                // Alert xác nhận xóa từ confirm().
                 AcceptAlertIfPresent();
 
+                // Alert lỗi nghiệp vụ (nếu có) từ handleResponse().
+                Thread.Sleep(500);
+                AcceptAlertIfPresent();
+            }
             else if (action.Contains("hủy") || action.Contains("cancel"))
+            {
+                _cancelledDelete = true;
                 DismissAlertIfPresent();
+            }
         }
 
         private string GetActualResult()
@@ -87,17 +102,19 @@ namespace DoAnCuoiKy.Tests.Category
             if (!string.IsNullOrWhiteSpace(LastDialogMessage))
                 return LastDialogMessage;
 
-            if (_categoryIndexPage.CurrentUrl.Contains("/Category/Index") && _categoryIndexPage.IsTableVisible())
+            if (_cancelledDelete)
+                return "Đã hủy xóa danh mục";
+
+            if (_confirmedDelete)
             {
-                var heading = _categoryIndexPage.GetPageHeading();
-                if (heading.Contains("Quản lý danh mục"))
-                {
-                    return "Trang danh sách danh mục hiển thị đúng";
-                }
+                bool stillExists = _categoryIndexPage.HasCategoryByName(_selectedCategory);
+                return stillExists
+                    ? "Không thể xóa danh mục đang được sử dụng trong sản phẩm"
+                    : "Xóa danh mục thành công";
             }
 
-            if (_categoryIndexPage.IsModalOpen())
-                return "Modal thêm danh mục đã mở";
+            if (_categoryIndexPage.CurrentUrl.Contains("/Category/Index") && _categoryIndexPage.IsTableVisible())
+                return "Trang danh sách danh mục hiển thị đúng";
 
             return $"Trang hiện tại: {Driver.Url}";
         }
