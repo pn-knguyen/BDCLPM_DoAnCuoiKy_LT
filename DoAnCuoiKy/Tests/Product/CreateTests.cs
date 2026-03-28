@@ -69,13 +69,20 @@ namespace DoAnCuoiKy.Tests.Product
                 testPassed = actual.Contains(expected) || expected.Contains(actual) || actual.Equals(expected);
             }
 
+            string? screenshotNote = null;
+            if (!testPassed)
+            {
+                screenshotNote = CaptureFailureScreenshot(tcId);
+            }
+
             TestContext.Out.WriteLine($"Result: {(testPassed ? "PASS" : "FAIL")}");
 
             ExcelDataProvider.WriteTestResults(
                 steps,
                 actualResult,
                 testPassed ? "Pass" : "Fail",
-                SheetName);
+                SheetName,
+                screenshotNote);
 
             Assert.That(testPassed, Is.True);
         }
@@ -179,6 +186,9 @@ namespace DoAnCuoiKy.Tests.Product
             if (!string.IsNullOrEmpty(validation))
                 return $"Lỗi validation: {validation}";
 
+            if (currentUrl.Contains("/Product/Create") && productPage.IsSubmitDisabled())
+                return "Nút thêm sản phẩm bị disable";
+
             if (currentUrl.Contains("/Product/Index"))
                 return "Sản phẩm được tạo thành công, quay về trang danh sách";
 
@@ -186,6 +196,30 @@ namespace DoAnCuoiKy.Tests.Product
                 return "Vẫn ở trang tạo sản phẩm (có thể có lỗi)";
 
             return $"Trang hiện tại: {currentUrl}";
+        }
+
+        private string? CaptureFailureScreenshot(string tcId)
+        {
+            try
+            {
+                var screenshot = ((ITakesScreenshot)driver).GetScreenshot();
+                var folder = Path.Combine(TestContext.CurrentContext.WorkDirectory, "Screenshots", "Product", "Create");
+                Directory.CreateDirectory(folder);
+
+                var safeTcId = string.IsNullOrWhiteSpace(tcId) ? "UnknownTC" : tcId.Replace("/", "_").Replace("\\", "_");
+                var fileName = $"{safeTcId}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+                var filePath = Path.Combine(folder, fileName);
+
+                screenshot.SaveAsFile(filePath);
+                TestContext.Out.WriteLine($"Screenshot saved: {filePath}");
+
+                return filePath;
+            }
+            catch (Exception ex)
+            {
+                TestContext.Out.WriteLine($"ERROR taking screenshot: {ex.Message}");
+                return null;
+            }
         }
     }
 }

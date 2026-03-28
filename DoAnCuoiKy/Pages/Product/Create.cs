@@ -150,6 +150,27 @@ namespace DoAnCuoiKy.Pages
         {
             Wait(By.Id("submitButton")).Click();
         }
+
+        public bool IsSubmitDisabled()
+        {
+            try
+            {
+                var submit = Wait(By.Id("submitButton"));
+                var disabledAttr = submit.GetAttribute("disabled");
+                var ariaDisabled = submit.GetAttribute("aria-disabled");
+                var classes = submit.GetAttribute("class") ?? "";
+
+                return !string.IsNullOrEmpty(disabledAttr)
+                       || string.Equals(ariaDisabled, "true", StringComparison.OrdinalIgnoreCase)
+                       || classes.Contains("disabled", StringComparison.OrdinalIgnoreCase)
+                       || !submit.Enabled;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public void AddColor()
         {
             Wait(By.CssSelector(".mt-4")).Click();

@@ -1,6 +1,8 @@
 ﻿using DoAnCuoiKy.Models;
 using NUnit.Framework;
 using OfficeOpenXml;
+using OfficeOpenXml.Style;
+using System.Drawing;
 
 namespace DoAnCuoiKy
 {
@@ -150,13 +152,16 @@ namespace DoAnCuoiKy
             foreach (var step in steps)
             {
                 worksheet.Cells[step.ExcelRow, 11].Value = "";
-                worksheet.Cells[step.ExcelRow, 12].Value = "";
+
+                var resultCell = worksheet.Cells[step.ExcelRow, 12];
+                resultCell.Value = "";
+                resultCell.Style.Fill.PatternType = ExcelFillStyle.None;
             }
 
             package.Save();
         }
 
-        public static void WriteTestResults(List<TestStep> steps, string actual, string result, string sheetName)
+        public static void WriteTestResults(List<TestStep> steps, string actual, string result, string sheetName, string? notes = null)
         {
             try
             {
@@ -171,9 +176,11 @@ namespace DoAnCuoiKy
 
                 int actualCol = 11;
                 int resultCol = 12;
+                int notesCol = 13;
 
                 var actualCell = worksheet.Cells[row, actualCol];
                 var resultCell = worksheet.Cells[row, resultCol];
+                var notesCell = worksheet.Cells[row, notesCol];
 
                 if (actualCell.Merge)
                 {
@@ -189,8 +196,30 @@ namespace DoAnCuoiKy
                     resultCell = range;
                 }
 
+                if (notesCell.Merge)
+                {
+                    var mergeAddress = worksheet.MergedCells[row, notesCol];
+                    var range = worksheet.Cells[mergeAddress];
+                    notesCell = range;
+                }
+
                 actualCell.Value = actual;
                 resultCell.Value = result;
+
+                if (notes != null)
+                {
+                    notesCell.Value = notes;
+                }
+
+                resultCell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                if (string.Equals(result, "Pass", StringComparison.OrdinalIgnoreCase))
+                {
+                    resultCell.Style.Fill.BackgroundColor.SetColor(Color.LightGreen);
+                }
+                else
+                {
+                    resultCell.Style.Fill.BackgroundColor.SetColor(Color.LightCoral);
+                }
 
                 package.Save();
 

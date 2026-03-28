@@ -120,14 +120,14 @@ namespace DoAnCuoiKy.Tests.Product
             else if (action.Contains("danh mục"))
                 productPage.SelectCategory(data);
 
-            else if (action.Contains("giá"))
+            else if (action.Contains("giảm giá"))
+                productPage.SelectDiscount(data);
+
+            else if (action.Contains("nhập giá") || action.Contains("price"))
                 productPage.EnterPrice(data);
 
             else if (action.Contains("số lượng"))
                 productPage.EnterStock(data);
-
-            else if (action.Contains("giảm giá"))
-                productPage.SelectDiscount(data);
 
             else if (action.Contains("mô tả ngắn"))
                 productPage.EnterShortDescription(data);
@@ -135,11 +135,62 @@ namespace DoAnCuoiKy.Tests.Product
             else if (action.Contains("mô tả chi tiết"))
                 productPage.EnterDetailDescription(data);
 
+            else if (action.Contains("thêm màu"))
+            {
+                productPage.AddColor();
+                var count = productPage.GetColorCount();
+                if (count > 0)
+                {
+                    colorIndex = count - 1;
+                }
+            }
+
             else if (action.Contains("chọn màu"))
                 productPage.SelectColor(data, colorIndex);
 
-            else if (action.Contains("chọn hình"))
-                productPage.UploadNewImage(data);
+            else if (action.Contains("xóa màu"))
+                productPage.RemoveColor();
+
+            else if (action.Contains("chọn hình") || action.Contains("upload"))
+            {
+                var imagePaths = data.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                if (imagePaths.Length == 0)
+                {
+                    productPage.UploadNewImage(data, colorIndex);
+                }
+                else
+                {
+                    foreach (var path in imagePaths)
+                    {
+                        productPage.UploadNewImage(path.Trim(), colorIndex);
+                    }
+                }
+            }
+            else if (action.Contains("delete") || action.Contains("xóa") || action.Contains("click nút x"))
+            {
+                int count = 1;
+
+                if (!string.IsNullOrWhiteSpace(data) && int.TryParse(data, out int parsed))
+                    count = parsed;
+
+                for (int i = 0; i < count; i++)
+                {
+                    productPage.RemoveImage(0);
+
+                    try
+                    {
+                        wait.Until(d =>
+                        {
+                            var buttons = d.FindElements(By.CssSelector(".relative .w-4"));
+                            return buttons.Count == 0 || !buttons[0].Displayed || !buttons[0].Enabled;
+                        });
+                    }
+                    catch (WebDriverTimeoutException)
+                    {
+                        Thread.Sleep(500);
+                    }
+                }
+            }
 
             else if (action.Contains("lưu"))
                 productPage.SubmitEdit();
@@ -158,6 +209,18 @@ namespace DoAnCuoiKy.Tests.Product
             string validation = productPage.GetValidationErrors();
             if (!string.IsNullOrEmpty(validation))
                 return $"Lỗi validation: {validation}";
+
+            // case nghiệp vụ: không cho xóa ảnh cuối cùng -> nút lưu bị disable
+            if (currentUrl.Contains("/Product/Edit")
+                && productPage.IsSubmitDisabled()
+                && productPage.GetRemoveImageButtonCount() <= 1)
+            {
+                return "Nút cập nhật bị disable";
+            }
+
+            // case nghiệp vụ: form không hợp lệ (ví dụ tên sản phẩm trống) -> nút bị disable
+            if (currentUrl.Contains("/Product/Edit") && productPage.IsSubmitDisabled())
+                return "Nút sản phẩm bị disable";
 
             // fallback theo url
             if (currentUrl.Contains("/Product/Index"))

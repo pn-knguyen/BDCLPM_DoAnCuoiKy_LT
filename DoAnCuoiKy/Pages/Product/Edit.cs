@@ -116,8 +116,29 @@ namespace DoAnCuoiKy.Pages
         public void SelectColor(string color, int index)
         {
             var colors = wait.Until(d => d.FindElements(By.Name("Colors")));
-            var dropdown = new SelectElement(colors[index]);
-            dropdown.SelectByText(color);
+            if (colors.Count == 0 || string.IsNullOrWhiteSpace(color)) return;
+
+            var targetIndex = Math.Min(Math.Max(index, 0), colors.Count - 1);
+            var dropdown = new SelectElement(colors[targetIndex]);
+            var desiredColor = color.Trim();
+
+            var selectedColors = colors
+                .Where((_, i) => i != targetIndex)
+                .Select(c => new SelectElement(c).SelectedOption.Text.Trim())
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (selectedColors.Contains(desiredColor))
+            {
+                var fallback = dropdown.Options
+                    .Select(o => o.Text.Trim())
+                    .FirstOrDefault(o => !string.IsNullOrWhiteSpace(o) && !selectedColors.Contains(o));
+
+                if (!string.IsNullOrWhiteSpace(fallback))
+                    desiredColor = fallback;
+            }
+
+            dropdown.SelectByText(desiredColor);
         }
 
         public void AddColor()
@@ -125,20 +146,81 @@ namespace DoAnCuoiKy.Pages
             Wait(By.Id("addColorBtn")).Click();
         }
 
-        public void RemoveColor(int index)
+        public void RemoveColor()
         {
-            var removeBtns = wait.Until(d => d.FindElements(By.CssSelector(".color-section .w-5")));
-            removeBtns[index].Click();
+            var removeColorButtons = wait.Until(d => d.FindElements(By.CssSelector(".color-section:nth-child(2) .px-3:nth-child(2)")));
+            if (removeColorButtons.Count == 0) return;
+
+            var btn = removeColorButtons[0];
+
+            try
+            {
+                btn.Click();
+            }
+            catch
+            {
+                ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", btn);
+            }
+
+            TryAcceptAlert();
+        }
+
+        public int GetColorCount()
+        {
+            try
+            {
+                return driver.FindElements(By.Name("Colors")).Count;
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         // ===== Upload image =====
 
         public void UploadNewImage(string path)
         {
-            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            UploadNewImage(path, 0);
+        }
+
+        public void UploadNewImage(string path, int index)
+        {
+            var normalizedPath = (path ?? string.Empty)
+                .Trim()
+                .Trim('"', '“', '”');
+
+            if (string.IsNullOrWhiteSpace(normalizedPath))
+                return;
+
+            if (!Path.IsPathRooted(normalizedPath))
+                normalizedPath = Path.GetFullPath(normalizedPath);
+
+            if (!File.Exists(normalizedPath))
+                return;
+
+            var imageInputs = wait.Until(d => d.FindElements(By.CssSelector(".image-input")));
+            if (imageInputs.Count == 0) return;
+
+            var targetIndex = Math.Min(Math.Max(index, 0), imageInputs.Count - 1);
+            imageInputs[targetIndex].SendKeys(normalizedPath);
+        }
+
+        //remove image
+        public void RemoveImage(int index)
+        {
+            var removeBtns = wait.Until(d => d.FindElements(By.CssSelector(".relative .w-4")));
+            if (removeBtns.Count == 0) return;
+
+            var btn = removeBtns[Math.Min(index, removeBtns.Count - 1)];
+
+            try
             {
-                var image = Wait(By.CssSelector(".image-input"));
-                image.SendKeys(path);
+                btn.Click();
+            }
+            catch
+            {
+                ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", btn);
             }
         }
 
@@ -147,6 +229,31 @@ namespace DoAnCuoiKy.Pages
         public void SubmitEdit()
         {
             Wait(By.Id("submitBtn")).Click();
+            TryAcceptAlert();
+        }
+
+        private void TryAcceptAlert()
+        {
+            try
+            {
+                var shortWait = new WebDriverWait(driver, TimeSpan.FromSeconds(1));
+                shortWait.Until(d =>
+                {
+                    try
+                    {
+                        var alert = d.SwitchTo().Alert();
+                        alert.Accept();
+                        return true;
+                    }
+                    catch (NoAlertPresentException)
+                    {
+                        return false;
+                    }
+                });
+            }
+            catch
+            {
+            }
         }
 
         public void CancelEdit()
@@ -182,7 +289,7 @@ namespace DoAnCuoiKy.Pages
         {
             try
             {
-                var errors = driver.FindElements(By.CssSelector("#Price-error"));
+                var errors = driver.FindElements(By.CssSelector("#Price-error, #Stock-error"));
 
                 var result = string.Join(", ", errors.Select(e => e.Text).Where(t => !string.IsNullOrWhiteSpace(t)));
 
@@ -191,6 +298,38 @@ namespace DoAnCuoiKy.Pages
             catch
             {
                 return "";
+            }
+        }
+
+        public bool IsSubmitDisabled()
+        {
+            try
+            {
+                var submit = Wait(By.Id("submitBtn"));
+                var disabledAttr = submit.GetAttribute("disabled");
+                var ariaDisabled = submit.GetAttribute("aria-disabled");
+                var classes = submit.GetAttribute("class") ?? "";
+
+                return !string.IsNullOrEmpty(disabledAttr)
+                       || string.Equals(ariaDisabled, "true", StringComparison.OrdinalIgnoreCase)
+                       || classes.Contains("disabled", StringComparison.OrdinalIgnoreCase)
+                       || !submit.Enabled;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public int GetRemoveImageButtonCount()
+        {
+            try
+            {
+                return driver.FindElements(By.CssSelector(".relative .w-4")).Count;
+            }
+            catch
+            {
+                return 0;
             }
         }
     }

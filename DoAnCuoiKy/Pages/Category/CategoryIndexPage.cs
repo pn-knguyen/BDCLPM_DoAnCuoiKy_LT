@@ -49,9 +49,59 @@ namespace DoAnCuoiKy.Pages.Category
 
         public bool IsModalOpen()
         {
-            var modal = _wait.Until(d => d.FindElement(CategoryIndexLocators.CategoryModal));
+            var modal = _driver.FindElements(CategoryIndexLocators.CategoryModal).FirstOrDefault();
+            if (modal == null)
+            {
+                return false;
+            }
+
             var cssClass = modal.GetAttribute("class") ?? string.Empty;
             return !cssClass.Contains("hidden");
+        }
+
+        public void ClickCancelModal()
+        {
+            _wait.Until(d => d.FindElement(CategoryIndexLocators.FormCancelButton)).Click();
+        }
+
+        public void ClickEditByName(string categoryName)
+        {
+            var row = string.IsNullOrWhiteSpace(categoryName)
+                ? _driver.FindElements(By.XPath("//tbody/tr")).FirstOrDefault()
+                : _driver.FindElements(By.XPath($"//tbody/tr[td[contains(normalize-space(), \"{categoryName}\")]]")).FirstOrDefault();
+
+            if (row != null)
+            {
+                row.FindElement(By.XPath(".//button[contains(normalize-space(), 'Sửa')]"))?.Click();
+                return;
+            }
+
+            _wait.Until(d => d.FindElements(CategoryIndexLocators.EditButtons).FirstOrDefault())?.Click();
+        }
+
+        public void ClickDeleteByName(string categoryName)
+        {
+            var row = string.IsNullOrWhiteSpace(categoryName)
+                ? _driver.FindElements(By.XPath("//tbody/tr")).FirstOrDefault()
+                : _driver.FindElements(By.XPath($"//tbody/tr[td[contains(normalize-space(), \"{categoryName}\")]]")).FirstOrDefault();
+
+            if (row != null)
+            {
+                row.FindElement(By.XPath(".//button[contains(normalize-space(), 'Xóa')]"))?.Click();
+                return;
+            }
+
+            _wait.Until(d => d.FindElements(CategoryIndexLocators.DeleteButtons).FirstOrDefault())?.Click();
+        }
+
+        public bool HasCategoryByName(string categoryName)
+        {
+            if (string.IsNullOrWhiteSpace(categoryName))
+            {
+                return _driver.FindElements(CategoryIndexLocators.CategoryRows).Count > 0;
+            }
+
+            return _driver.FindElements(By.XPath($"//tbody/tr[td[contains(normalize-space(), \"{categoryName}\")]]")).Count > 0;
         }
     }
 }

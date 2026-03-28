@@ -61,6 +61,11 @@ namespace DoAnCuoiKy.Tests.Login
                 testPassed = actual.Contains(expected) || expected.Contains(actual) || actual.Equals(expected);
             }
 
+            if (!testPassed)
+            {
+                CaptureFailureScreenshot(tcId);
+            }
+
             TestContext.Out.WriteLine($"Result: {(testPassed ? "PASS" : "FAIL")}");
 
             ExcelDataProvider.WriteTestResults(
@@ -84,6 +89,26 @@ namespace DoAnCuoiKy.Tests.Login
                 .ToLower()
                 .Trim()
                 .Replace("  ", " ");
+        }
+
+        private void CaptureFailureScreenshot(string tcId)
+        {
+            try
+            {
+                var screenshot = ((ITakesScreenshot)driver).GetScreenshot();
+                var folder = Path.Combine(TestContext.CurrentContext.WorkDirectory, "Screenshots", "Login");
+                Directory.CreateDirectory(folder);
+
+                var fileName = $"{tcId}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+                var filePath = Path.Combine(folder, fileName);
+
+                screenshot.SaveAsFile(filePath);
+                TestContext.Out.WriteLine($"Screenshot saved: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                TestContext.Out.WriteLine($"ERROR taking screenshot: {ex.Message}");
+            }
         }
 
         private void ExecuteStep(TestStep step)

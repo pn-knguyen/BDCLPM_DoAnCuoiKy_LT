@@ -13,5 +13,8 @@ namespace DoAnCuoiKy.Pages.Category
         public static readonly By CategoryIdInput = By.Id("categoryId");
         public static readonly By CategoryNameInput = By.Id("categoryName");
         public static readonly By FormSubmitButton = By.CssSelector("#categoryForm button[type='submit']");
+        public static readonly By FormCancelButton = By.CssSelector("#categoryForm button[type='button']");
+        public static readonly By EditButtons = By.XPath("//tbody//button[contains(normalize-space(), 'Sửa')]");
+        public static readonly By DeleteButtons = By.XPath("//tbody//button[contains(normalize-space(), 'Xóa')]");
     }
 }
