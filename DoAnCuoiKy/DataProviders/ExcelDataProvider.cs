@@ -3,6 +3,7 @@ using NUnit.Framework;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
+using System.Text.RegularExpressions;
 
 namespace DoAnCuoiKy
 {
@@ -11,6 +12,7 @@ namespace DoAnCuoiKy
         private const string ExcelFileEnvVar = "BDCLPM_EXCEL_PATH";
         private const string DefaultExcelFileName = "2117_Functional_Testcase.xlsx";
         public const string PlaceholderTestCaseId = "__MISSING_OR_EMPTY_TEST_DATA__";
+        private static readonly object ExcelFileLock = new();
 
         private static string ExcelFilePath => ResolveExcelFilePath();
 
@@ -95,7 +97,8 @@ namespace DoAnCuoiKy
                     startRow = row;
                 }
 
-                if (int.TryParse(worksheet.Cells[row, 7].Text, out int stepNum))
+                var stepCellText = worksheet.Cells[row, 7].Text;
+                if (TryParseStepNumber(stepCellText, out int stepNum))
                 {
                     steps.Add(new TestStep
                     {
@@ -136,99 +139,189 @@ namespace DoAnCuoiKy
             int startRow,
             string testCaseFilter)
         {
-            if (!string.IsNullOrEmpty(tcId) && steps.Count > 0 && tcId.StartsWith(testCaseFilter))
+            if (string.IsNullOrEmpty(tcId) || !tcId.StartsWith(testCaseFilter))
+            {
+                return;
+            }
+
+            if (steps.Count == 0 && startRow > 0)
+            {
+                // Keep the test discoverable and writable even if the step-number cell is malformed.
+                steps.Add(new TestStep
+                {
+                    StepNumber = 0,
+                    StepAction = string.Empty,
+                    TestData = string.Empty,
+                    ExcelRow = startRow
+                });
+            }
+
+            if (steps.Count > 0)
             {
                 list.Add(new TestCaseData(tcId, objective, steps.ToList(), expected, startRow));
             }
         }
 
-        public static void ClearOldResults(List<TestStep> steps, string sheetName)
+        private static bool TryParseStepNumber(string? rawValue, out int stepNum)
         {
-            using var package = new ExcelPackage(new FileInfo(ExcelFilePath));
-            var worksheet = package.Workbook.Worksheets[sheetName];
-
-            if (worksheet == null) return;
-
-            foreach (var step in steps)
+            stepNum = 0;
+            if (string.IsNullOrWhiteSpace(rawValue))
             {
-                worksheet.Cells[step.ExcelRow, 11].Value = "";
-
-                var resultCell = worksheet.Cells[step.ExcelRow, 12];
-                resultCell.Value = "";
-                resultCell.Style.Fill.PatternType = ExcelFillStyle.None;
+                return false;
             }
 
-            package.Save();
+            if (int.TryParse(rawValue.Trim(), out stepNum))
+            {
+                return true;
+            }
+
+            var match = Regex.Match(rawValue, @"\d+");
+            return match.Success && int.TryParse(match.Value, out stepNum);
+        }
+
+        public static void ClearOldResults(List<TestStep> steps, string sheetName)
+        {
+            try
+            {
+                lock (ExcelFileLock)
+                {
+                    ExecuteWithRetry(() =>
+                    {
+                        using var package = new ExcelPackage(new FileInfo(ExcelFilePath));
+                        var worksheet = package.Workbook.Worksheets[sheetName];
+
+                        if (worksheet == null) return;
+
+                        foreach (var step in steps)
+                        {
+                            worksheet.Cells[step.ExcelRow, 11].Value = "";
+                            worksheet.Cells[step.ExcelRow, 13].Value = "";
+
+                            var resultCell = worksheet.Cells[step.ExcelRow, 12];
+                            resultCell.Value = "";
+                            resultCell.Style.Fill.PatternType = ExcelFillStyle.None;
+
+                            worksheet.Cells[step.ExcelRow, 11].Style.Fill.PatternType = ExcelFillStyle.None;
+                            worksheet.Cells[step.ExcelRow, 13].Style.Fill.PatternType = ExcelFillStyle.None;
+                        }
+
+                        package.Save();
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                TestContext.Out.WriteLine($"WARN clearing old Excel results: {ex.Message}");
+            }
         }
 
         public static void WriteTestResults(List<TestStep> steps, string actual, string result, string sheetName, string? notes = null)
         {
             try
             {
-                using var package = new ExcelPackage(new FileInfo(ExcelFilePath));
-                var worksheet = package.Workbook.Worksheets[sheetName];
-
-                if (worksheet == null) return;
-
-                var lastStep = steps.Last();
-
-                int row = lastStep.ExcelRow;
-
-                int actualCol = 11;
-                int resultCol = 12;
-                int notesCol = 13;
-
-                var actualCell = worksheet.Cells[row, actualCol];
-                var resultCell = worksheet.Cells[row, resultCol];
-                var notesCell = worksheet.Cells[row, notesCol];
-
-                if (actualCell.Merge)
+                lock (ExcelFileLock)
                 {
-                    var mergeAddress = worksheet.MergedCells[row, actualCol];
-                    var range = worksheet.Cells[mergeAddress];
-                    actualCell = range;
+                    using var package = new ExcelPackage(new FileInfo(ExcelFilePath));
+                    var worksheet = package.Workbook.Worksheets[sheetName];
+
+                    if (worksheet == null) return;
+
+                    var lastStep = steps.Last();
+
+                    int row = lastStep.ExcelRow;
+
+                    int actualCol = 11;
+                    int resultCol = 12;
+                    int notesCol = 13;
+
+                    var actualCell = worksheet.Cells[row, actualCol];
+                    var resultCell = worksheet.Cells[row, resultCol];
+                    var notesCell = worksheet.Cells[row, notesCol];
+
+                    if (actualCell.Merge)
+                    {
+                        var mergeAddress = worksheet.MergedCells[row, actualCol];
+                        var range = worksheet.Cells[mergeAddress];
+                        actualCell = range;
+                    }
+
+                    if (resultCell.Merge)
+                    {
+                        var mergeAddress = worksheet.MergedCells[row, resultCol];
+                        var range = worksheet.Cells[mergeAddress];
+                        resultCell = range;
+                    }
+
+                    if (notesCell.Merge)
+                    {
+                        var mergeAddress = worksheet.MergedCells[row, notesCol];
+                        var range = worksheet.Cells[mergeAddress];
+                        notesCell = range;
+                    }
+
+                    actualCell.Value = actual;
+                    resultCell.Value = result;
+
+                    notesCell.Value = notes ?? string.Empty;
+
+                    bool isPass = string.Equals(result, "Pass", StringComparison.OrdinalIgnoreCase);
+
+                    ApplyResultColor(actualCell, isPass);
+                    ApplyResultColor(resultCell, isPass);
+                    ApplyResultColor(notesCell, isPass);
+
+                    ExecuteWithRetry(() => package.Save());
+
+                    TestContext.Out.WriteLine($"Excel updated at {actualCell.Address}");
                 }
-
-                if (resultCell.Merge)
-                {
-                    var mergeAddress = worksheet.MergedCells[row, resultCol];
-                    var range = worksheet.Cells[mergeAddress];
-                    resultCell = range;
-                }
-
-                if (notesCell.Merge)
-                {
-                    var mergeAddress = worksheet.MergedCells[row, notesCol];
-                    var range = worksheet.Cells[mergeAddress];
-                    notesCell = range;
-                }
-
-                actualCell.Value = actual;
-                resultCell.Value = result;
-
-                if (notes != null)
-                {
-                    notesCell.Value = notes;
-                }
-
-                resultCell.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                if (string.Equals(result, "Pass", StringComparison.OrdinalIgnoreCase))
-                {
-                    resultCell.Style.Fill.BackgroundColor.SetColor(Color.LightGreen);
-                }
-                else
-                {
-                    resultCell.Style.Fill.BackgroundColor.SetColor(Color.LightCoral);
-                }
-
-                package.Save();
-
-                TestContext.Out.WriteLine($"Excel updated at {actualCell.Address}");
             }
             catch (Exception ex)
             {
                 TestContext.Out.WriteLine($"ERROR writing Excel: {ex.Message}");
             }
+        }
+
+        private static void ApplyResultColor(ExcelRange cell, bool isPass)
+        {
+            if (isPass)
+            {
+                cell.Style.Fill.PatternType = ExcelFillStyle.None;
+                return;
+            }
+
+            cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+            cell.Style.Fill.BackgroundColor.SetColor(Color.LightCoral);
+        }
+
+        private static void ExecuteWithRetry(Action action, int maxAttempts = 5, int delayMs = 250)
+        {
+            Exception? lastException = null;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    action();
+                    return;
+                }
+                catch (IOException ex)
+                {
+                    lastException = ex;
+                    TestContext.Out.WriteLine($"Excel IO retry {attempt}/{maxAttempts}: {ex.Message}");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    lastException = ex;
+                    TestContext.Out.WriteLine($"Excel save retry {attempt}/{maxAttempts}: {ex.Message}");
+                }
+
+                if (attempt < maxAttempts)
+                {
+                    Thread.Sleep(delayMs * attempt);
+                }
+            }
+
+            throw lastException ?? new InvalidOperationException("Unknown Excel write error.");
         }
     }
 }

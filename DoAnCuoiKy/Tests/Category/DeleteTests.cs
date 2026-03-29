@@ -36,14 +36,44 @@ namespace DoAnCuoiKy.Tests.Category
 
             ExcelDataProvider.ClearOldResults(steps, SheetName);
 
-            foreach (var step in steps)
+            string actualResult;
+            bool testPassed;
+            string notes = string.Empty;
+
+            try
             {
-                TestContext.Out.WriteLine($"Step {step.StepNumber} - {step.StepAction} - {step.TestData}");
-                ExecuteStep(step);
+                foreach (var step in steps)
+                {
+                    TestContext.Out.WriteLine($"Step {step.StepNumber} - {step.StepAction} - {step.TestData}");
+                    ExecuteStep(step);
+                }
+
+                actualResult = GetActualResult();
+                testPassed = IsExpectedMatched(expectedResult, actualResult);
+            }
+            catch (Exception ex)
+            {
+                string dialogText = AcceptAlertIfPresent(1);
+                if (string.IsNullOrWhiteSpace(dialogText))
+                {
+                    dialogText = DismissAlertIfPresent(1);
+                }
+
+                if (string.IsNullOrWhiteSpace(dialogText))
+                {
+                    dialogText = ExtractAlertTextFromException(ex.Message);
+                }
+
+                actualResult = string.IsNullOrWhiteSpace(dialogText)
+                    ? $"Exception: {ex.Message}"
+                    : dialogText;
+                testPassed = IsExpectedMatched(expectedResult, actualResult);
             }
 
-            string actualResult = GetActualResult();
-            bool testPassed = IsExpectedMatched(expectedResult, actualResult);
+            if (!testPassed)
+            {
+                notes = $"Screenshot: {CaptureFailureScreenshot(tcId)}";
+            }
 
             TestContext.Out.WriteLine();
             TestContext.Out.WriteLine($"Expected: {expectedResult}");
@@ -54,15 +84,22 @@ namespace DoAnCuoiKy.Tests.Category
                 steps,
                 actualResult,
                 testPassed ? "Pass" : "Fail",
-                SheetName);
+                SheetName,
+                notes);
 
-            Assert.That(testPassed, Is.True);
+            Assert.That(testPassed, Is.True, actualResult);
         }
 
         private void ExecuteStep(TestStep step)
         {
             string action = step.StepAction?.ToLower() ?? string.Empty;
             string data = step.TestData ?? string.Empty;
+            bool isAlertDecisionStep = action.Contains("xác nhận") || action.Contains("ok") || action.Contains("hủy") || action.Contains("cancel");
+
+            if (!isAlertDecisionStep)
+            {
+                DismissAlertIfPresent(1);
+            }
 
             if (ExecuteLoginStep(action, data))
                 return;
@@ -77,6 +114,7 @@ namespace DoAnCuoiKy.Tests.Category
             }
             else if (action.Contains("nút \"xóa\"") || action.Contains("icon xóa") || action.Contains("nhấn nút \"xoá\"") || action.Contains("nhấn nút \"xóa\""))
             {
+                DismissAlertIfPresent(1);
                 _categoryIndexPage.ClickDeleteByName(_selectedCategory);
             }
             else if (action.Contains("xác nhận") || action.Contains("ok"))
@@ -137,6 +175,25 @@ namespace DoAnCuoiKy.Tests.Category
             }
 
             return string.Empty;
+        }
+
+        private static string ExtractAlertTextFromException(string message)
+        {
+            const string marker = "Alert text :";
+            int markerIndex = message.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (markerIndex < 0)
+            {
+                return string.Empty;
+            }
+
+            int start = markerIndex + marker.Length;
+            int end = message.IndexOf('}', start);
+            if (end < 0)
+            {
+                end = message.Length;
+            }
+
+            return message[start..end].Trim();
         }
     }
 }

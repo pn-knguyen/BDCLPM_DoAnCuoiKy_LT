@@ -109,6 +109,33 @@ namespace DoAnCuoiKy.Tests.Category
             return Driver.Url;
         }
 
+        protected string CaptureFailureScreenshot(string tcId)
+        {
+            try
+            {
+                if (Driver is not ITakesScreenshot screenshotDriver)
+                {
+                    return "Không thể chụp screenshot: driver không hỗ trợ.";
+                }
+
+                string safeTcId = string.IsNullOrWhiteSpace(tcId) ? "unknown" : tcId.Replace(':', '_').Replace('/', '_').Replace('\\', '_');
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                string screenshotDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "TestResults", "Screenshots"));
+
+                Directory.CreateDirectory(screenshotDir);
+
+                string screenshotPath = Path.Combine(screenshotDir, $"{safeTcId}_{timestamp}.png");
+                var screenshot = screenshotDriver.GetScreenshot();
+                screenshot.SaveAsFile(screenshotPath);
+
+                return screenshotPath;
+            }
+            catch (Exception ex)
+            {
+                return $"Không thể chụp screenshot: {ex.Message}";
+            }
+        }
+
         protected string AcceptAlertIfPresent(int timeoutSeconds = 2)
         {
             try
@@ -177,6 +204,42 @@ namespace DoAnCuoiKy.Tests.Category
                 .ToLower()
                 .Trim()
                 .Replace("  ", " ");
+        }
+
+        protected string ResolveDynamicTestData(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return input;
+            }
+
+            string result = input;
+            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
+
+            if (result.Contains("{AUTO_UNIQUE}", StringComparison.OrdinalIgnoreCase))
+            {
+                string unique = $"ZCAT_{timestamp}_{Guid.NewGuid():N}"[..26];
+                result = result.Replace("{AUTO_UNIQUE}", unique, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (result.Contains("{AUTO_UNIQUE_SPECIAL}", StringComparison.OrdinalIgnoreCase))
+            {
+                string uniqueSpecial = $"Z@CAT_{timestamp}_{Guid.NewGuid():N}"[..28];
+                result = result.Replace("{AUTO_UNIQUE_SPECIAL}", uniqueSpecial, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (result.Contains("{AUTO_UNIQUE_LONG}", StringComparison.OrdinalIgnoreCase))
+            {
+                string longValue = $"ZCAT_LONG_{timestamp}_{Guid.NewGuid():N}";
+                if (longValue.Length < 120)
+                {
+                    longValue = longValue + new string('X', 120 - longValue.Length);
+                }
+
+                result = result.Replace("{AUTO_UNIQUE_LONG}", longValue, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return result;
         }
 
         protected bool IsExpectedMatched(string? expectedResult, string actualResult)
