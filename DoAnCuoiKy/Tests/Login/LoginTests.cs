@@ -20,6 +20,7 @@ namespace DoAnCuoiKy.Tests.Login
         public void Setup()
         {
             driver = new EdgeDriver();
+            driver.Manage().Window.Maximize();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
             loginPage = new LoginPage(driver, wait);
         }

@@ -1,3 +1,6 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
 using DoAnCuoiKy.Models;
 using DoAnCuoiKy.Pages;
 using NUnit.Framework;
@@ -7,17 +10,16 @@ using OpenQA.Selenium.Support.UI;
 
 namespace DoAnCuoiKy.Tests.Product
 {
-    public class CreateTests
+    public class DeleteTests
     {
         public EdgeDriver driver;
         public WebDriverWait wait;
-        private Create productPage;
+        private Delete productPage;
 
         private const string SheetName = "Test Cases AD";
-        private const string TestCaseFilter = "F3.1_";
+        private const string TestCaseFilter = "F3.3_";
 
-        private int colorIndex = 0; 
-        private bool colorSelected = false;
+        private string targetProductName = string.Empty;
 
         [SetUp]
         public void Setup()
@@ -25,7 +27,8 @@ namespace DoAnCuoiKy.Tests.Product
             driver = new EdgeDriver();
             driver.Manage().Window.Maximize();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-            productPage = new Create(driver, wait);
+            productPage = new Delete(driver, wait);
+            targetProductName = string.Empty;
         }
 
         [TearDown]
@@ -35,8 +38,8 @@ namespace DoAnCuoiKy.Tests.Product
             driver?.Dispose();
         }
 
-        [Test, TestCaseSource(typeof(ExcelDataProvider), nameof(ExcelDataProvider.GetTestCases), new object[] { "Test Cases AD", "F3.1_" })]
-        public void CreateProductTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
+        [Test, TestCaseSource(typeof(ExcelDataProvider), nameof(ExcelDataProvider.GetTestCases), new object[] { "Test Cases AD", "F3.3_" })]
+        public void DeleteProductTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
         {
             TestContext.Out.WriteLine($"Test Case ID: {tcId}");
             TestContext.Out.WriteLine($"Objective: {objective}");
@@ -47,13 +50,10 @@ namespace DoAnCuoiKy.Tests.Product
             for (int i = 0; i < steps.Count; i++)
             {
                 var step = steps[i];
-                TestStep? nextStep = i < steps.Count - 1 ? steps[i + 1] : null;
-
                 TestContext.Out.WriteLine($"Step {step.StepNumber} - {step.StepAction} - {step.TestData}");
 
-                ExecuteStep(step, nextStep);
+                ExecuteStep(step);
             }
-
 
             string actualResult = GetActualResult();
 
@@ -67,6 +67,7 @@ namespace DoAnCuoiKy.Tests.Product
             {
                 string expected = NormalizeString(expectedResult);
                 string actual = NormalizeString(actualResult);
+
                 testPassed = actual.Contains(expected) || expected.Contains(actual) || actual.Equals(expected);
             }
 
@@ -102,101 +103,71 @@ namespace DoAnCuoiKy.Tests.Product
                 .Replace("  ", " ");
         }
 
-        private void ExecuteStep(TestStep step, TestStep? nextStep)
+        private void ExecuteStep(TestStep step)
         {
             string action = step.StepAction?.ToLower() ?? "";
             string data = step.TestData ?? "";
 
-            if (action.Contains("mở trang") || action.Contains("open"))
+            if (action.Contains("mở trang"))
                 productPage.Navigate(data);
 
-            else if (action.Contains("tên đăng nhập") || action.Contains("username"))
+            else if (action.Contains("tên đăng nhập"))
                 productPage.EnterUsername(data);
 
-            else if (action.Contains("mật khẩu") || action.Contains("password"))
+            else if (action.Contains("mật khẩu"))
                 productPage.EnterPassword(data);
 
-            else if (action.Contains("đăng nhập") || action.Contains("login"))
+            else if (action.Contains("đăng nhập"))
                 productPage.ClickLogin();
 
             else if (action.Contains("quản lý sản phẩm"))
                 productPage.OpenProductManagement();
 
-            else if (action.Contains("thêm sản phẩm mới"))
-                productPage.ClickCreateProduct();
+            else if (action.Contains("tìm sản phẩm") || action.Contains("sản phẩm muốn xóa"))
+                targetProductName = data?.Trim() ?? string.Empty;
 
-            else if (action.Contains("tên sản phẩm"))
-                productPage.EnterProductName(data);
-
-            else if (action.Contains("danh mục"))
-                productPage.SelectCategory(data);
-
-            else if (action.Contains("nhập giá"))
-                productPage.EnterPrice(data);
-
-            else if (action.Contains("số lượng"))
-                productPage.EnterStock(data);
-
-            else if (action.Contains("giảm giá"))
-                productPage.SelectDiscount(data);
-
-            else if (action.Contains("mô tả ngắn"))
-                productPage.EnterShortDescription(data);
-
-            else if (action.Contains("mô tả chi tiết") || action.Contains("mô tả"))
-                productPage.EnterDetailDescription(data);
-
-            else if (action.Contains("chọn màu"))
-                productPage.SelectColor(data, colorIndex);
-
-            else if (action.Contains("chọn hình") || action.Contains("upload"))
+            else if (action.Contains("nút xóa") || action.Contains("click nút xóa") || action.Contains("xóa sản phẩm"))
             {
-                var imagePaths = data.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                var productName = !string.IsNullOrWhiteSpace(data) ? data.Trim() : targetProductName;
+                productPage.ClickDeleteByName(productName);
 
-                foreach (var path in imagePaths)
+                try
                 {
-                    productPage.UploadImage(path.Trim(), colorIndex);
+                    productPage.AcceptDeleteConfirmationAlert();
                 }
-
-                // chỉ thêm màu nếu bước tiếp theo KHÔNG phải submit
-                if (nextStep != null &&
-                    !nextStep.StepAction.ToLower().Contains("thêm sản phẩm") &&
-                    !nextStep.StepAction.ToLower().Contains("lưu"))
+                catch
                 {
-                    productPage.AddColor();
-                    colorIndex++;
                 }
             }
 
-            else if (action.Contains("thêm sản phẩm") || action.Contains("lưu"))
-                productPage.Submit();
+            else if (action.Contains("xác nhận"))
+                productPage.AcceptDeleteConfirmationAlert();
+
+            else if (action.Contains("hủy") || action.Contains("cancel"))
+                productPage.DismissDeleteConfirmationAlert();
         }
-
-
-
 
         private string GetActualResult()
         {
-            string currentUrl = driver.Url;
-
             string success = productPage.GetSuccessMessage();
             if (!string.IsNullOrEmpty(success))
                 return success;
 
-            string validation = productPage.GetValidationErrors();
-            if (!string.IsNullOrEmpty(validation))
-                return $"Lỗi validation: {validation}";
+            string error = productPage.GetErrorMessage();
+            if (!string.IsNullOrEmpty(error))
+                return error;
 
-            if (currentUrl.Contains("/Product/Create") && productPage.IsSubmitDisabled())
-                return "Nút thêm sản phẩm bị disable";
+            if (!string.IsNullOrWhiteSpace(targetProductName)
+                && driver.Url.Contains("/Product/Index")
+                && !productPage.HasProductByName(targetProductName))
+            {
+                return "Sản phẩm bị xóa khỏi danh sách, hiển thị thông báo xóa sản phẩm thành công";
+            }
 
-            if (currentUrl.Contains("/Product/Index"))
-                return "Sản phẩm được tạo thành công, quay về trang danh sách";
+            if (driver.Url.Contains("/Product/Index"))
+                return "Đang ở trang quản lý sản phẩm";
 
-            if (currentUrl.Contains("/Product/Create"))
-                return "Vẫn ở trang tạo sản phẩm (có thể có lỗi)";
-
-            return $"Trang hiện tại: {currentUrl}";
+            return $"Trang hiện tại: {driver.Url}";
         }
 
         private string? CaptureFailureScreenshot(string tcId)
@@ -204,7 +175,7 @@ namespace DoAnCuoiKy.Tests.Product
             try
             {
                 var screenshot = ((ITakesScreenshot)driver).GetScreenshot();
-                var folder = Path.Combine(TestContext.CurrentContext.WorkDirectory, "Screenshots", "Product", "Create");
+                var folder = Path.Combine(TestContext.CurrentContext.WorkDirectory, "Screenshots", "Product", "Delete");
                 Directory.CreateDirectory(folder);
 
                 var safeTcId = string.IsNullOrWhiteSpace(tcId) ? "UnknownTC" : tcId.Replace("/", "_").Replace("\\", "_");
@@ -224,4 +195,3 @@ namespace DoAnCuoiKy.Tests.Product
         }
     }
 }
-
