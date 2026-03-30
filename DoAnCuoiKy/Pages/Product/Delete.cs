@@ -149,7 +149,7 @@ namespace DoAnCuoiKy.Pages
                 {
                     try
                     {
-                        var el = d.FindElement(By.CssSelector(".bg-red-100 .sm\\:inline"));
+                        var el = d.FindElement(By.CssSelector(".bg-red-100 .sm\\:inline, .bg-red-100.border.border-red-400.text-red-700.px-4.py-3.rounded.relative.mb-4, .h2"));
                         return el.Displayed ? el : null;
                     }
                     catch
