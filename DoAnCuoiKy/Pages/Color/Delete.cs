@@ -6,12 +6,12 @@ using System.Text;
 
 namespace DoAnCuoiKy.Pages.Color
 {
-    public class Delete
+    public class DeleteColor
     {
         private IWebDriver driver;
         private WebDriverWait wait;
 
-        public Delete(IWebDriver driver, WebDriverWait wait)
+        public DeleteColor(IWebDriver driver, WebDriverWait wait)
         {
             this.driver = driver;
             this.wait = wait;

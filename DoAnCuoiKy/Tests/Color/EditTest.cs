@@ -13,7 +13,7 @@ namespace DoAnCuoiKy.Tests.Color
     {
         public EdgeDriver driver;
         public WebDriverWait wait;
-        private Edit colorPage;
+        private EditColor colorPage;
         private const string SheetName = "Test Cases AD";
         private const string TestCaseFilter = "F5.2_";
 
@@ -22,7 +22,7 @@ namespace DoAnCuoiKy.Tests.Color
         {
             driver = new EdgeDriver();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-            colorPage = new Edit(driver, wait);
+            colorPage = new EditColor(driver, wait);
         }
 
         [TearDown]
