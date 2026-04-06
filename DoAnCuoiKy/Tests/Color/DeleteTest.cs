@@ -13,7 +13,7 @@ namespace DoAnCuoiKy.Tests.Color
     {
         public EdgeDriver driver;
         public WebDriverWait wait;
-        private Delete colorPage;
+        private DeleteColor colorPage;
         private const string SheetName = "Test Cases AD";
         private const string TestCaseFilter = "F5.3_";
 
@@ -22,7 +22,7 @@ namespace DoAnCuoiKy.Tests.Color
         {
             driver = new EdgeDriver();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-            colorPage = new Delete(driver, wait);
+            colorPage = new DeleteColor(driver, wait);
         }
 
         [TearDown]

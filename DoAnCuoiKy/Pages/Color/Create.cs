@@ -6,12 +6,12 @@ using System.Text;
 
 namespace DoAnCuoiKy.Pages.Color
 {
-    public class Create
+    public class CreateColor
     {
         private IWebDriver driver;
         private WebDriverWait wait;
 
-        public Create(IWebDriver driver, WebDriverWait wait)
+        public CreateColor(IWebDriver driver, WebDriverWait wait)
         {
             this.driver = driver;
             this.wait = wait;
