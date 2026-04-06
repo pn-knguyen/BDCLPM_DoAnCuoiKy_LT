@@ -23,6 +23,7 @@ namespace DoAnCuoiKy.Tests.Product
         public void Setup()
         {
             driver = new EdgeDriver();
+            driver.Manage().Window.Maximize();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
             productPage = new Create(driver, wait);
         }

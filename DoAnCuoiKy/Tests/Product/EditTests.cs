@@ -22,6 +22,7 @@ namespace DoAnCuoiKy.Tests.Product
         public void Setup()
         {
             driver = new EdgeDriver();
+            driver.Manage().Window.Maximize();
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
             productPage = new Edit(driver, wait);
         }
@@ -66,13 +67,20 @@ namespace DoAnCuoiKy.Tests.Product
                 testPassed = actual.Contains(expected) || expected.Contains(actual) || actual.Equals(expected);
             }
 
+            string? screenshotNote = null;
+            if (!testPassed)
+            {
+                screenshotNote = CaptureFailureScreenshot(tcId);
+            }
+
             TestContext.Out.WriteLine($"Result: {(testPassed ? "PASS" : "FAIL")}");
 
             ExcelDataProvider.WriteTestResults(
                 steps,
                 actualResult,
                 testPassed ? "Pass" : "Fail",
-                SheetName);
+                SheetName,
+                screenshotNote);
 
             Assert.That(testPassed, Is.True);
         }
@@ -230,6 +238,30 @@ namespace DoAnCuoiKy.Tests.Product
                 return "Vẫn ở trang chỉnh sửa sản phẩm (có thể có lỗi)";
 
             return $"Trang hiện tại: {currentUrl}";
+        }
+
+        private string? CaptureFailureScreenshot(string tcId)
+        {
+            try
+            {
+                var screenshot = ((ITakesScreenshot)driver).GetScreenshot();
+                var folder = Path.Combine(TestContext.CurrentContext.WorkDirectory, "Screenshots", "Product", "Edit");
+                Directory.CreateDirectory(folder);
+
+                var safeTcId = string.IsNullOrWhiteSpace(tcId) ? "UnknownTC" : tcId.Replace("/", "_").Replace("\\", "_");
+                var fileName = $"{safeTcId}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+                var filePath = Path.Combine(folder, fileName);
+
+                screenshot.SaveAsFile(filePath);
+                TestContext.Out.WriteLine($"Screenshot saved: {filePath}");
+
+                return filePath;
+            }
+            catch (Exception ex)
+            {
+                TestContext.Out.WriteLine($"ERROR taking screenshot: {ex.Message}");
+                return null;
+            }
         }
     }
 }
