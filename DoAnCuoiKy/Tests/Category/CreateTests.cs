@@ -36,14 +36,31 @@ namespace DoAnCuoiKy.Tests.Category
 
             ExcelDataProvider.ClearOldResults(steps, SheetName);
 
-            foreach (var step in steps)
+            string actualResult;
+            bool testPassed;
+            string notes = string.Empty;
+
+            try
             {
-                TestContext.Out.WriteLine($"Step {step.StepNumber} - {step.StepAction} - {step.TestData}");
-                ExecuteStep(step);
+                foreach (var step in steps)
+                {
+                    TestContext.Out.WriteLine($"Step {step.StepNumber} - {step.StepAction} - {step.TestData}");
+                    ExecuteStep(step);
+                }
+
+                actualResult = GetActualResult();
+                testPassed = IsExpectedMatched(expectedResult, actualResult);
+            }
+            catch (Exception ex)
+            {
+                actualResult = $"Exception: {ex.Message}";
+                testPassed = false;
             }
 
-            string actualResult = GetActualResult();
-            bool testPassed = IsExpectedMatched(expectedResult, actualResult);
+            if (!testPassed)
+            {
+                notes = $"Screenshot: {CaptureFailureScreenshot(tcId)}";
+            }
 
             TestContext.Out.WriteLine();
             TestContext.Out.WriteLine($"Expected: {expectedResult}");
@@ -54,9 +71,10 @@ namespace DoAnCuoiKy.Tests.Category
                 steps,
                 actualResult,
                 testPassed ? "Pass" : "Fail",
-                SheetName);
+                SheetName,
+                notes);
 
-            Assert.That(testPassed, Is.True);
+            Assert.That(testPassed, Is.True, actualResult);
         }
 
         private void ExecuteStep(TestStep step)
@@ -85,7 +103,7 @@ namespace DoAnCuoiKy.Tests.Category
                 _categoryPage.EnterCategoryName(string.Empty);
 
             else if (action.Contains("tên danh mục") || action.Contains("category name"))
-                _categoryPage.EnterCategoryName(data);
+                _categoryPage.EnterCategoryName(ResolveDynamicTestData(data));
 
             else if (action.Contains("mô tả"))
             {

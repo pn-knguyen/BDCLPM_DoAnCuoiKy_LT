@@ -4,22 +4,24 @@ using DoAnCuoiKy.Pages.Category;
 namespace DoAnCuoiKy.Tests.Category
 {
     [NonParallelizable]
-    public class IndexTests : CategoryTestBase
+    public class ListingTests : CategoryTestBase
     {
-        private const string TestCaseFilter = "F4.0_";
+        private const string TestCaseFilter = "F4.4_";
 
         private CategoryIndexPage _categoryIndexPage = null!;
         private string _selectedCategory = string.Empty;
+        private bool _navigatedToIndex;
 
         [SetUp]
-        public void SetupCategoryIndex()
+        public void SetupCategoryListing()
         {
             _categoryIndexPage = new CategoryIndexPage(Driver, Wait);
             _selectedCategory = string.Empty;
+            _navigatedToIndex = false;
         }
 
         [Test, TestCaseSource(typeof(ExcelDataProvider), nameof(ExcelDataProvider.GetTestCases), new object[] { SheetName, TestCaseFilter })]
-        public void CategoryIndexTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
+        public void CategoryListingTestCase(string tcId, string? objective, List<TestStep> steps, string? expectedResult, int startRow)
         {
             if (tcId == ExcelDataProvider.PlaceholderTestCaseId)
             {
@@ -42,6 +44,12 @@ namespace DoAnCuoiKy.Tests.Category
                 {
                     TestContext.Out.WriteLine($"Step {step.StepNumber} - {step.StepAction} - {step.TestData}");
                     ExecuteStep(step);
+                }
+
+                if (!_navigatedToIndex)
+                {
+                    _categoryIndexPage.Navigate(GetCategoryIndexUrl());
+                    _navigatedToIndex = true;
                 }
 
                 actualResult = GetActualResult();
@@ -78,11 +86,17 @@ namespace DoAnCuoiKy.Tests.Category
             string action = step.StepAction?.ToLower() ?? string.Empty;
             string data = step.TestData ?? string.Empty;
 
+            if (string.IsNullOrWhiteSpace(action) && string.IsNullOrWhiteSpace(data))
+                return;
+
             if (ExecuteLoginStep(action, data))
                 return;
 
             if (action.Contains("quản lý danh mục"))
+            {
                 _categoryIndexPage.Navigate(GetCategoryIndexUrl());
+                _navigatedToIndex = true;
+            }
 
             else if (action.Contains("thêm danh mục") || action.Contains("add new"))
                 _categoryIndexPage.ClickAddNewCategory();
